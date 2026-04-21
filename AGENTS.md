@@ -9,3 +9,4 @@
 
 # 开发方式
 基于TDD模式学习，分模块学习nanobot的各个核心组成部分。每个模块学习完成后，以`YYYY-MM-DD_<moduleName>.md`的形式沉淀学习文档到文档目录下。
+后续学习文档默认参考模板：`docs/_template_module_note.md`。

@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "A minimal Python project for learning nanobot with TDD"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "loguru>=0.7.0,<1.0.0",
+]
 
 [project.optional-dependencies]
 dev = [
