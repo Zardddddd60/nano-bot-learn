@@ -202,51 +202,86 @@ assistant(tool_calls=[...])
 
 ---
 
-## 6. 基本流程图
+## 6. 图示
 
-### 6.1 `get_or_create()`
+### 6.1 模块分工
 
-```text
-get_or_create(key)
-  -> cache 里有吗？
-     -> 有：直接返回
-     -> 没有：尝试 _load(key)
-         -> 加载成功：放进 cache 后返回
-         -> 不存在/加载失败：新建 Session，放进 cache 后返回
+```mermaid
+mindmap
+    root((session/manager.py))
+        Session
+            内存中的会话数据
+            管理 messages / metadata / last_consolidated
+            负责 add_message / get_history / clear
+        SessionManager
+            管理 sessions 目录
+            负责 load / save / delete / list
+            维护 _cache
+            兼容 legacy 路径
+            文件损坏时走 repair
 ```
 
-### 6.2 `_load()`
+### 6.2 `get_or_create()`
 
-```text
-_load(key)
-  -> 看 workspace/sessions 里有没有文件
-  -> 如果没有，看 legacy 路径有没有
-     -> 有：迁移到当前路径
-  -> 逐行读取 JSONL
-     -> metadata 行：读取 created_at / updated_at / metadata / last_consolidated
-     -> 普通行：追加到 messages
-  -> 如果解析失败：走 _repair()
+```mermaid
+flowchart TD
+    A["get_or_create(key)"] --> B{"key 在 cache 中吗？"}
+    B -- 是 --> C["直接返回 cache 中的 Session"]
+    B -- 否 --> D["调用 _load(key)"]
+    D --> E{"加载成功吗？"}
+    E -- 是 --> F["放入 cache"]
+    E -- 否 --> G["新建 Session(key)"]
+    G --> F
+    F --> H["返回 Session"]
+    C --> H
 ```
 
-### 6.3 `save()`
+### 6.3 `_load()`
 
-```text
-save(session)
-  -> 先写到 .jsonl.tmp
-  -> 全部写成功后 os.replace(tmp, target)
-  -> 更新 cache
+```mermaid
+flowchart TD
+    A["_load(key)"] --> B{"当前 sessions 路径有文件吗？"}
+    B -- 否 --> C{"legacy 路径有文件吗？"}
+    C -- 是 --> D["迁移 legacy 文件到当前路径"]
+    C -- 否 --> E["返回 None"]
+    D --> F["开始逐行读取 JSONL"]
+    B -- 是 --> F
+    F --> G{"读取或解析时出错吗？"}
+    G -- 是 --> H["调用 _repair()"]
+    G -- 否 --> I{"这一行是 metadata 吗？"}
+    I -- 是 --> J["读取 created_at / updated_at / metadata / last_consolidated"]
+    I -- 否 --> K["追加到 messages"]
+    J --> L{"还有下一行吗？"}
+    K --> L
+    L -- 是 --> I
+    L -- 否 --> M["构造并返回 Session"]
+```
+
+### 6.4 `save()`
+
+```mermaid
+flowchart TD
+    A["save(session)"] --> B["先写入 .jsonl.tmp"]
+    B --> C["全部写成功后 os.replace(tmp, target)"]
+    C --> D["更新 cache"]
 ```
 
 这个写法的目的就是“原子写入”，避免把正式文件写坏。
 
-### 6.4 `_repair()`
+### 6.5 `_repair()`
 
-```text
-_repair(key)
-  -> 逐行读取文件
-  -> 能解析的行保留
-  -> 解析失败的行跳过
-  -> 如果还有有效 metadata 或 message，就尽量恢复成 Session
+```mermaid
+flowchart TD
+    A["_repair(key)"] --> B["逐行读取文件"]
+    B --> C{"这一行能解析成 JSON 吗？"}
+    C -- 是 --> D["保留 metadata 或 message"]
+    C -- 否 --> E["跳过损坏行"]
+    D --> F{"还有下一行吗？"}
+    E --> F
+    F -- 是 --> C
+    F -- 否 --> G{"还有有效 metadata 或 message 吗？"}
+    G -- 是 --> H["尽量恢复成 Session"]
+    G -- 否 --> I["返回 None"]
 ```
 
 ---
