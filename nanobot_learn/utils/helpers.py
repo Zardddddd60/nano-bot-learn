@@ -36,3 +36,7 @@ def find_legal_message_start(messages: list[dict[str, Any]]) -> int:
         declared_call_id_set.clear()
 
   return start
+
+def image_placeholder_text(path: str | None, *, empty: str = "[image]") -> str:
+  """Build an image placeholder string."""
+  return f"[image: {path}]" if path else empty
